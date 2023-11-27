@@ -135,19 +135,31 @@ class AudioPlayer: ObservableObject {
                 }
             }
         }
-
         @objc private func handleAudioSessionRouteChange(notification: Notification) {
             guard let info = notification.userInfo,
-                  let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
-                  let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
-                      return
+                let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+                    return
             }
-            if reason == .oldDeviceUnavailable {
-                player?.pause()
-            } else if reason == .newDeviceAvailable {
+
+            switch reason {
+            case .newDeviceAvailable:
+                // A new device (like Bluetooth headphones) is available, continue playback
                 player?.play()
+            case .oldDeviceUnavailable:
+                // The old device (like headphones) was unplugged, pause the playback
+                if wasPlayingBeforeRouteChange {
+                    player?.pause()
+                }
+            default:
+                break
             }
         }
+
+        private var wasPlayingBeforeRouteChange: Bool {
+            player?.isPlaying ?? false
+        }
+
     func playAudio(fileName: String) {
         guard let url = Bundle.main.url(forResource: fileName, withExtension: "m4a", subdirectory: "kktracks") else{
             print("Audio file not found")
